@@ -2,6 +2,14 @@
 
 A React-based web application developed as part of a frontend technical assessment. The application allows employees to submit certificate requests and view existing requests through an external REST API.
 
+This edition uses **Vercel Serverless Functions** as an API proxy to keep the subscription key on the server rather than exposing it in the frontend.
+
+## Live Demo
+
+**[View Live Application](https://zalex-certification-vercel.vercel.app/request-certificate)**
+
+The application is deployed on Vercel, with both certificate submission and request listing integrated with the provided certification API.
+
 ## Features
 
 ### Request Certificate
@@ -28,93 +36,131 @@ A React-based web application developed as part of a frontend technical assessme
 
 - **React** — Component-based user interface
 - **Vite** — Development server and build tooling
-- **JavaScript (ES6+)** — Application logic
+- **JavaScript (ES6+)** — Frontend and serverless API logic
 - **React Router** — Client-side navigation
-- **Axios** — HTTP requests and API integration
+- **Axios** — HTTP requests from the frontend
+- **Vercel Serverless Functions** — Server-side API proxy
 - **CSS** — Responsive styling
 - **Vitest** — Unit testing
 - **ESLint** — Code quality and linting
 
 ## Getting Started
 
-### Prerequisites
+### Live Application
 
-- Node.js compatible with the project's Vite version
-- npm
-- Valid API subscription key for the provided certification API
+The recommended way to explore the application is through the deployed version:
 
-### Installation
+**[Zalex Certification — Live Demo](https://zalex-certification-vercel.vercel.app/request-certificate)**
 
-**1. Clone the repository**
+The deployed application includes the React frontend and Vercel Serverless Functions, allowing both GET and POST operations without additional local configuration.
+
+### Local Development
+
+For a standalone local version of the application, refer to the original repository:
+
+**[Zalex Certification — Local Edition](https://github.com/and-neo/zalex-certification)**
+
+The original edition uses direct API integration and includes instructions for installing dependencies, configuring the API subscription key, and running the application locally.
+
+### Running This Repository Locally
+
+This repository can also be cloned for frontend development:
 
 ```bash
-git clone https://github.com/and-neo/zalex-certification.git
-cd zalex-certification
-```
-
-**2. Install dependencies**
-
-```bash
+git clone https://github.com/and-neo/zalex-certification-vercel.git
+cd zalex-certification-vercel
 npm install
-```
-
-**3. Configure environment variables**
-
-Create a `.env` file in the project root:
-
-```env
-VITE_API_BASE_URL=https://apim-interviews-prod.azure-api.net
-VITE_API_SUBSCRIPTION_KEY=your_subscription_key_here
-```
-
-Replace the placeholder with a valid subscription key.
-
-**4. Start the development server**
-
-```bash
 npm run dev
 ```
 
-Open `http://localhost:3000` in your browser.
+The Vite development server runs at `http://localhost:3000`.
+
+**Note:** Running `npm run dev` starts only the frontend. The `/api` endpoints are implemented as Vercel Serverless Functions and are not available through the standalone Vite development server.
+
+### Environment Variables
+
+The deployed serverless functions use the following server-side environment variables:
+
+```env
+API_BASE_URL=https://apim-interviews-prod.azure-api.net
+API_SUBSCRIPTION_KEY=your_subscription_key_here
+```
+
+These variables are configured in the Vercel project settings and are not included in the frontend bundle.
+
+The subscription key must not use the `VITE_` prefix.
 
 ## Available Scripts
 
-| Command           | Description                          |
-| ----------------- | ------------------------------------ |
-| `npm run dev`     | Start the Vite development server    |
-| `npm run build`   | Generate a production build          |
-| `npm run preview` | Preview the production build locally |
-| `npm run lint`    | Run ESLint checks                    |
-| `npm test`        | Run unit tests with Vitest           |
+| Command           | Description                                   |
+| ----------------- | --------------------------------------------- |
+| `npm run dev`     | Start the Vite frontend development server    |
+| `npm run build`   | Generate a production build                   |
+| `npm run preview` | Preview the frontend production build locally |
+| `npm run lint`    | Run ESLint checks                             |
+| `npm test`        | Run unit tests with Vitest                    |
 
 ## API Integration
 
-The application communicates with the certification API using two endpoints:
+The application communicates with the certification API through two Vercel Serverless Functions:
 
-| Method | Endpoint               | Purpose                                |
-| ------ | ---------------------- | -------------------------------------- |
-| GET    | `/request-list`        | Retrieve existing certificate requests |
-| POST   | `/request-certificate` | Submit a new certificate request       |
+| Method | Frontend Endpoint          | External API Endpoint  |
+| ------ | -------------------------- | ---------------------- |
+| GET    | `/api/request-list`        | `/request-list`        |
+| POST   | `/api/request-certificate` | `/request-certificate` |
 
 API requests are managed through a shared Axios instance in `src/services/certificateService.js`.
 
-The application handles unsuccessful requests and displays appropriate feedback to users.
+The frontend communicates with relative `/api` endpoints. Each serverless function forwards the request to the external certification API using the server-side subscription key.
 
-**Security note:** This edition uses client-side environment variables to access the assessment API. Vite exposes `VITE_` variables to the browser, so the subscription key is not protected at runtime. This implementation is intended for local assessment and demonstration only. A publicly deployed production version should use a server-side proxy to protect API credentials.
+### Request Flow
+
+```text
+React Frontend
+      |
+      | Axios request (/api)
+      v
+Vercel Serverless Function
+      |
+      | Adds subscription key
+      v
+External Certification API
+      |
+      | JSON response
+      v
+Vercel Serverless Function
+      |
+      v
+React Frontend
+```
+
+The application provides loading, success, and error feedback based on API responses.
+
+## Security Considerations
+
+The API subscription key is stored in Vercel Environment Variables and accessed through `process.env` inside the serverless functions.
+
+Unlike client-side `VITE_` variables, the key is not embedded in the frontend JavaScript bundle.
+
+The public proxy endpoints are not authenticated or rate-limited in this assessment implementation. In a production environment, additional safeguards such as authentication, authorization, rate limiting, and request validation would be considered.
 
 ## Project Structure
 
 ```text
+api/
+├── request-certificate.js  # POST serverless endpoint
+└── request-list.js         # GET serverless endpoint
+
 src/
 ├── assets/
-├── components/       # Reusable UI and certificate components
-├── layouts/          # Shared page layouts
-├── pages/            # Application pages
-├── routes/           # Client-side routing
-├── services/         # API communication
-├── styles/           # Application styles
-├── utils/            # Validation, date utilities, and tests
-└── main.jsx          # Application entry point
+├── components/             # Reusable UI and certificate components
+├── layouts/                # Shared page layouts
+├── pages/                  # Application pages
+├── routes/                 # Client-side routing
+├── services/               # Frontend API communication
+├── styles/                 # Application styles
+├── utils/                  # Validation, date utilities, and tests
+└── main.jsx                # Application entry point
 ```
 
 ## Validation and Data Handling
@@ -144,7 +190,26 @@ npm test
 - Filtering and sorting are performed client-side.
 - Asynchronous operations include loading and error handling.
 - The application uses semantic HTML and accessibility attributes where appropriate.
+- Serverless functions isolate API credentials from the frontend.
+
+## Deployment
+
+The application is deployed on **Vercel**, with the React frontend and serverless functions hosted in the same project.
+
+**Production URL:** https://zalex-certification-vercel.vercel.app/request-certificate
+
+Deployment configuration:
+
+- **Framework:** Vite
+- **Build Command:** `npm run build`
+- **Output Directory:** `dist`
+- **Serverless Functions:** `api/`
+- **Environment Variables:** `API_BASE_URL`, `API_SUBSCRIPTION_KEY`
+
+The production deployment has been tested with successful GET and POST requests against the provided certification API.
 
 ## Assessment Context
 
 Developed as a frontend technical assessment using React, with an emphasis on component organization, form validation, REST API integration, data presentation, and maintainable code.
+
+The serverless proxy was added to support server-side API credential handling in the publicly deployed version.
